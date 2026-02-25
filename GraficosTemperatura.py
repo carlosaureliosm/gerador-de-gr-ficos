@@ -313,7 +313,9 @@ class AplicativoGraficos(tk.Tk):
         if titulo_customizado:
             ax.set_title(titulo_customizado, fontsize=12, fontweight='bold')
         else:
-            ax.set_title(f'Evolução da Temperatura - {os.path.basename(caminho_csv)}', fontsize=12, fontweight='bold')
+            # os.path.splitext divide em ('B13', '.csv') e o [0] pega só o 'B13'
+            nome_arquivo = os.path.splitext(os.path.basename(caminho_csv))[0]
+            ax.set_title(nome_arquivo, fontsize=12, fontweight='bold')
             
         ax.set_xlabel('Tempo (horas)', fontsize=10)
         ax.set_ylabel('Temperatura (°C)', fontsize=10)
