@@ -1,4 +1,5 @@
 import os
+import re
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -17,7 +18,11 @@ class AplicativoGraficos(tk.Tk):
         self.arquivos_encontrados = []
         self.arquivo_atual = None
         self.canvas_grafico = None
-        self.entries_legendas = [] # Guarda os campos de texto dinâmicos das legendas
+        self.entries_legendas = [] 
+
+        # --- EVENTOS GLOBAIS DE TECLADO ---
+        self.bind('<Up>', self.navegar_arquivos)
+        self.bind('<Down>', self.navegar_arquivos)
 
         # --- CONSTRUÇÃO DA INTERFACE ---
         
@@ -113,23 +118,22 @@ class AplicativoGraficos(tk.Tk):
 
         tk.Label(self.frame_controles, text="Deixe em branco para o modo automático.", bg="#f0f0f0", fg="gray", font=("Arial", 8, "italic")).grid(row=3, column=0, columnspan=2, pady=(0,5))
 
-        # --- NOVO: CONTROLES DA LEGENDA ---
+        # CONTROLES DA LEGENDA
         self.frame_legenda = tk.LabelFrame(self.scrollable_frame, text="Configurações da Legenda", bg="#f0f0f0", font=("Arial", 9, "bold"))
         self.frame_legenda.pack(fill=tk.X, pady=5, ipadx=5, ipady=5)
 
-        # Checkbox para ativar/desativar
-        self.var_mostrar_legenda = tk.BooleanVar(value=True)
+        # ALTERADO AQUI: Iniciando com a legenda desativada (value=False)
+        self.var_mostrar_legenda = tk.BooleanVar(value=False)
         self.chk_mostrar_legenda = tk.Checkbutton(
             self.frame_legenda, text="Mostrar Legenda no Gráfico", 
             variable=self.var_mostrar_legenda, bg="#f0f0f0"
         )
         self.chk_mostrar_legenda.pack(anchor="w", padx=5, pady=(0, 5))
 
-        # Frame interno onde as lacunas de nomes serão criadas dinamicamente
         self.frame_nomes_series = tk.Frame(self.frame_legenda, bg="#f0f0f0")
         self.frame_nomes_series.pack(fill=tk.X, padx=5)
 
-        # Botão Aplicar Configurações
+        # Botões
         self.btn_aplicar = tk.Button(
             self.scrollable_frame, 
             text="Aplicar Alterações ao Gráfico", 
@@ -140,7 +144,6 @@ class AplicativoGraficos(tk.Tk):
         )
         self.btn_aplicar.pack(fill=tk.X, pady=(10, 5))
 
-        # BOTÃO DE SALVAR IMAGEM
         self.btn_salvar = tk.Button(
             self.scrollable_frame, 
             text="💾 Salvar Gráfico (PNG)", 
@@ -163,6 +166,34 @@ class AplicativoGraficos(tk.Tk):
         )
         self.label_aviso.pack(expand=True)
 
+    def navegar_arquivos(self, event):
+        if isinstance(self.focus_get(), tk.Entry):
+            return
+
+        if not self.arquivos_encontrados:
+            return
+            
+        selecao = self.lista_arquivos.curselection()
+        if not selecao:
+            novo_idx = 0
+        else:
+            idx = selecao[0]
+            if event.keysym == 'Up':
+                novo_idx = max(0, idx - 1)
+            elif event.keysym == 'Down':
+                novo_idx = min(len(self.arquivos_encontrados) - 1, idx + 1)
+            else:
+                return
+
+        self.lista_arquivos.selection_clear(0, tk.END)
+        self.lista_arquivos.selection_set(novo_idx)
+        self.lista_arquivos.activate(novo_idx)
+        self.lista_arquivos.see(novo_idx) 
+        
+        self.ao_selecionar_arquivo(None)
+        
+        return "break"
+
     def selecionar_pasta(self):
         pasta = filedialog.askdirectory(title="Selecione a pasta com os CSVs do b4cast")
         if not pasta:
@@ -176,26 +207,33 @@ class AplicativoGraficos(tk.Tk):
                 if arquivo.lower().endswith('.csv'):
                     caminho_completo = os.path.join(raiz, arquivo)
                     self.arquivos_encontrados.append(caminho_completo)
-                    self.lista_arquivos.insert(tk.END, arquivo) 
 
         if not self.arquivos_encontrados:
             messagebox.showinfo("Aviso", "Nenhum arquivo .csv encontrado nessa pasta.")
-        else:
-            self.label_aviso.config(text="Arquivos carregados!\nClique em um item na lista à esquerda para visualizar.")
+            return
 
-    def ao_selecionar_arquivo(self, event):
+        def natural_sort_key(s):
+            return [int(text) if text.isdigit() else text.lower() for text in re.split(r'(\d+)', s)]
+        
+        self.arquivos_encontrados.sort(key=natural_sort_key)
+
+        for caminho in self.arquivos_encontrados:
+            arquivo = os.path.basename(caminho)
+            self.lista_arquivos.insert(tk.END, arquivo) 
+
+        self.label_aviso.config(text="Arquivos carregados!\nUse o mouse ou as setas (Cima/Baixo) para visualizar.")
+
+    def ao_selecionar_arquivo(self, event=None):
         selecao = self.lista_arquivos.curselection()
         if not selecao:
             return
         
         indice = selecao[0]
         self.arquivo_atual = self.arquivos_encontrados[indice]
-        # Passa novo_arquivo=True para reconstruir a lista de legendas na interface
         self.gerar_e_mostrar_grafico(self.arquivo_atual, novo_arquivo=True)
 
     def atualizar_grafico_atual(self):
         if self.arquivo_atual:
-            # Passa novo_arquivo=False para apenas ler o que o usuário digitou e atualizar
             self.gerar_e_mostrar_grafico(self.arquivo_atual, novo_arquivo=False)
         else:
             messagebox.showinfo("Aviso", "Por favor, selecione um arquivo na lista primeiro.")
@@ -224,7 +262,6 @@ class AplicativoGraficos(tk.Tk):
         if self.label_aviso.winfo_ismapped():
             self.label_aviso.pack_forget()
 
-        # 1. Leitura
         try:
             with open(caminho_csv, 'r', encoding='utf-8', errors='ignore') as f:
                 linhas = f.readlines()
@@ -268,9 +305,7 @@ class AplicativoGraficos(tk.Tk):
         coluna_tempo = df.columns[0]
         colunas_temperatura = df.columns[1:]
 
-        # --- LÓGICA DE ATUALIZAÇÃO DOS CAMPOS DE LEGENDA ---
         if novo_arquivo:
-            # Se for um arquivo novo, limpamos os campos antigos e criamos novos
             for widget in self.frame_nomes_series.winfo_children():
                 widget.destroy()
             self.entries_legendas = []
@@ -285,35 +320,38 @@ class AplicativoGraficos(tk.Tk):
                 lbl.pack(side=tk.LEFT)
                 
                 ent = tk.Entry(frame_linha)
-                ent.insert(0, nome_original) # Preenche com o nome padrão
+                ent.insert(0, nome_original) 
                 ent.pack(side=tk.LEFT, fill=tk.X, expand=True)
                 
                 self.entries_legendas.append(ent)
 
-        # Recolhe os nomes que estão atualmente digitados nas lacunas
         nomes_para_plotar = []
         for ent in self.entries_legendas:
             nome_digitado = ent.get().strip()
             nomes_para_plotar.append(nome_digitado if nome_digitado else "Série Desconhecida")
 
 
-        # 3. Construindo a Figura
         fig, ax = plt.subplots(figsize=(8, 5), constrained_layout=True)
         cores_linhas = plt.cm.tab10.colors
 
-        # Plota as curvas de temperatura com os nomes escolhidos pelo usuário
         for i, col in enumerate(colunas_temperatura):
             nome_serie = nomes_para_plotar[i] if i < len(nomes_para_plotar) else f"Série {i+1}"
             cor = cores_linhas[i % len(cores_linhas)] 
             ax.plot(df[coluna_tempo], df[col], linewidth=2, label=nome_serie, color=cor)
 
-        ax.axhline(y=65, color='red', linestyle='--', linewidth=1.5, label='Limite')
+        # ALTERADO AQUI: Removido o 'label' para não ir para a legenda padrão
+        limite_y = 65
+        ax.axhline(y=limite_y, color='red', linestyle='--', linewidth=1.5)
+
+        # ADICIONADO AQUI: Texto do Limite fixado na direita, em cima da linha
+        xmax = df[coluna_tempo].max()
+        ax.text(xmax, limite_y, 'Limite', color='red', fontsize=10, fontweight='bold', 
+                ha='right', va='bottom')
 
         titulo_customizado = self.entry_titulo.get().strip()
         if titulo_customizado:
             ax.set_title(titulo_customizado, fontsize=12, fontweight='bold')
         else:
-            # os.path.splitext divide em ('B13', '.csv') e o [0] pega só o 'B13'
             nome_arquivo = os.path.splitext(os.path.basename(caminho_csv))[0]
             ax.set_title(nome_arquivo, fontsize=12, fontweight='bold')
             
@@ -321,7 +359,6 @@ class AplicativoGraficos(tk.Tk):
         ax.set_ylabel('Temperatura (°C)', fontsize=10)
         ax.grid(True, linestyle=':', alpha=0.7)
         
-        # Eixo Y Customizado
         temp_max_global = df[colunas_temperatura].max().max()
         ymin_padrao = 0
         ymax_padrao = max(temp_max_global + 10, 75)
@@ -346,7 +383,7 @@ class AplicativoGraficos(tk.Tk):
 
         ax.set_xlim(left=0)
 
-        # Adiciona a legenda apenas se o checkbox estiver marcado
+        # A legenda só será exibida se o checkbox for ativado (agora inicia desativado)
         if self.var_mostrar_legenda.get():
             ax.legend(
                 loc='upper center', 
@@ -356,7 +393,6 @@ class AplicativoGraficos(tk.Tk):
                 frameon=False 
             )
 
-        # Atualiza a interface
         if self.canvas_grafico:
             self.canvas_grafico.get_tk_widget().destroy()
 
