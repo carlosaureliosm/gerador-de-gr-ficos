@@ -1,5 +1,7 @@
 import os
 import re
+import io
+import ctypes
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -122,7 +124,6 @@ class AplicativoGraficos(tk.Tk):
         self.frame_legenda = tk.LabelFrame(self.scrollable_frame, text="Configurações da Legenda", bg="#f0f0f0", font=("Arial", 9, "bold"))
         self.frame_legenda.pack(fill=tk.X, pady=5, ipadx=5, ipady=5)
 
-        # ALTERADO AQUI: Iniciando com a legenda desativada (value=False)
         self.var_mostrar_legenda = tk.BooleanVar(value=False)
         self.chk_mostrar_legenda = tk.Checkbutton(
             self.frame_legenda, text="Mostrar Legenda no Gráfico", 
@@ -152,7 +153,18 @@ class AplicativoGraficos(tk.Tk):
             bg="#28a745", fg="white", 
             relief=tk.FLAT, pady=8
         )
-        self.btn_salvar.pack(fill=tk.X, pady=(5, 10))
+        self.btn_salvar.pack(fill=tk.X, pady=(5, 5))
+        
+        # --- NOVO: BOTÃO DE COPIAR ---
+        self.btn_copiar = tk.Button(
+            self.scrollable_frame, 
+            text="📋 Copiar Gráfico", 
+            command=self.copiar_grafico,
+            font=("Arial", 10, "bold"),
+            bg="#17a2b8", fg="white", 
+            relief=tk.FLAT, pady=8
+        )
+        self.btn_copiar.pack(fill=tk.X, pady=(0, 10))
 
 
         # --- Frame Direito (Gráfico) ---
@@ -258,6 +270,106 @@ class AplicativoGraficos(tk.Tk):
             except Exception as e:
                 messagebox.showerror("Erro", f"Ocorreu um erro ao salvar a imagem:\n{e}")
 
+# --- NOVO: LÓGICA DE CÓPIA PARA ÁREA DE TRANSFERÊNCIA (CRAVADO EM 11x7 CM) ---
+    def copiar_grafico(self):
+        if not self.canvas_grafico:
+            messagebox.showwarning("Aviso", "Não há nenhum gráfico na tela para copiar.")
+            return
+
+        try:
+            from PIL import Image
+            import io
+            import ctypes
+            from ctypes import wintypes
+            import struct
+
+            # 1. Salva o gráfico em um buffer de memória
+            buf = io.BytesIO()
+            self.canvas_grafico.figure.savefig(buf, format='png', dpi=300, bbox_inches='tight', transparent=False, facecolor='white')
+            buf.seek(0)
+            
+            img = Image.open(buf)
+            
+            # --- A MÁGICA DOS 11x7 CM CRAVADOS ---
+            # Definimos uma resolução padrão de 300 DPI (alta qualidade de impressão)
+            dpi = 300
+            pixels_por_cm = dpi / 2.54
+            
+            # Calculamos a quantidade exata de pixels necessários para formar um retângulo de 11x7 cm
+            largura_px = int(11.0 * pixels_por_cm)
+            altura_px = int(7.0 * pixels_por_cm)
+            
+            # Forçamos o redimensionamento da imagem (usando filtro LANCZOS para não perder qualidade nas letras)
+            filtro = getattr(Image, 'Resampling', Image).LANCZOS
+            img = img.resize((largura_px, altura_px), filtro)
+            
+            output = io.BytesIO()
+            img.convert("RGB").save(output, "BMP")
+            bmp_data = bytearray(output.getvalue())
+            
+            # Convertendo DPI para PPM (Pixels Por Metro) que o Windows exige no cabeçalho
+            ppm = int(dpi / 0.0254) 
+            
+            # Injetamos a resolução X e Y simultaneamente na memória do arquivo
+            struct.pack_into('<i', bmp_data, 38, ppm)
+            struct.pack_into('<i', bmp_data, 42, ppm)
+            
+            # Corta o cabeçalho BMP (14 bytes)
+            data = bytes(bmp_data[14:])
+            
+            output.close()
+            buf.close()
+
+            # 3. Comandos do Windows (Blindados para arquitetura 64-bits)
+            CF_DIB = 8
+            GMEM_MOVEABLE = 0x0002
+
+            user32 = ctypes.windll.user32
+            kernel32 = ctypes.windll.kernel32
+
+            user32.OpenClipboard.argtypes = [wintypes.HWND]
+            user32.EmptyClipboard.argtypes = []
+            user32.SetClipboardData.argtypes = [wintypes.UINT, wintypes.HANDLE]
+            user32.SetClipboardData.restype = wintypes.HANDLE
+            user32.CloseClipboard.argtypes = []
+
+            kernel32.GlobalAlloc.argtypes = [wintypes.UINT, ctypes.c_size_t]
+            kernel32.GlobalAlloc.restype = wintypes.HANDLE
+            kernel32.GlobalLock.argtypes = [wintypes.HANDLE]
+            kernel32.GlobalLock.restype = wintypes.LPVOID
+            kernel32.GlobalUnlock.argtypes = [wintypes.HANDLE]
+            kernel32.GlobalUnlock.restype = wintypes.BOOL
+
+            msvcrt = ctypes.cdll.msvcrt
+            msvcrt.memcpy.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.c_size_t]
+            msvcrt.memcpy.restype = ctypes.c_void_p
+
+            hCd = kernel32.GlobalAlloc(GMEM_MOVEABLE, len(data))
+            if not hCd:
+                raise Exception("Falha ao alocar memória no Windows.")
+
+            ptr = kernel32.GlobalLock(hCd)
+            if not ptr:
+                raise Exception("Falha ao travar memória no Windows.")
+
+            msvcrt.memcpy(ptr, data, len(data))
+            kernel32.GlobalUnlock(hCd)
+
+            user32.OpenClipboard(0)
+            user32.EmptyClipboard()
+            user32.SetClipboardData(CF_DIB, hCd)
+            user32.CloseClipboard()
+
+            # Feedback visual sutil (agora avisa o tamanho exato)
+            texto_original = self.btn_copiar.cget("text")
+            self.btn_copiar.config(text="✔️ Copiado (11x7 cm)!")
+            self.after(1500, lambda: self.btn_copiar.config(text=texto_original))
+
+        except ImportError:
+            messagebox.showerror("Erro", "A biblioteca 'Pillow' não está instalada.\nNo terminal, digite: pip install pillow")
+        except Exception as e:
+            messagebox.showerror("Erro", f"Ocorreu um erro interno ao copiar o gráfico:\n{e}")
+
     def gerar_e_mostrar_grafico(self, caminho_csv, novo_arquivo=False):
         if self.label_aviso.winfo_ismapped():
             self.label_aviso.pack_forget()
@@ -339,11 +451,9 @@ class AplicativoGraficos(tk.Tk):
             cor = cores_linhas[i % len(cores_linhas)] 
             ax.plot(df[coluna_tempo], df[col], linewidth=2, label=nome_serie, color=cor)
 
-        # ALTERADO AQUI: Removido o 'label' para não ir para a legenda padrão
         limite_y = 65
         ax.axhline(y=limite_y, color='red', linestyle='--', linewidth=1.5)
 
-        # ADICIONADO AQUI: Texto do Limite fixado na direita, em cima da linha
         xmax = df[coluna_tempo].max()
         ax.text(xmax, limite_y, 'Limite', color='red', fontsize=10, fontweight='bold', 
                 ha='right', va='bottom')
@@ -383,7 +493,6 @@ class AplicativoGraficos(tk.Tk):
 
         ax.set_xlim(left=0)
 
-        # A legenda só será exibida se o checkbox for ativado (agora inicia desativado)
         if self.var_mostrar_legenda.get():
             ax.legend(
                 loc='upper center', 
