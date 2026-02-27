@@ -1,7 +1,5 @@
 import os
 import re
-import io
-import ctypes
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -117,8 +115,27 @@ class AplicativoGraficos(tk.Tk):
         tk.Label(self.frame_controles, text="Amplitude:", bg="#f0f0f0").grid(row=2, column=0, sticky="e", padx=5, pady=5)
         self.entry_ystep = tk.Entry(self.frame_controles, width=10)
         self.entry_ystep.grid(row=2, column=1, sticky="w", padx=5, pady=5)
-
+        
         tk.Label(self.frame_controles, text="Deixe em branco para o modo automático.", bg="#f0f0f0", fg="gray", font=("Arial", 8, "italic")).grid(row=3, column=0, columnspan=2, pady=(0,5))
+
+        # --- NOVO: CONTROLES DO EIXO X ---
+        self.frame_controles_x = tk.LabelFrame(self.scrollable_frame, text="Controles do Eixo X (Abscissas)", bg="#f0f0f0", font=("Arial", 9, "bold"))
+        self.frame_controles_x.pack(fill=tk.X, pady=5, ipadx=5, ipady=5)
+
+        tk.Label(self.frame_controles_x, text="X Inicial:", bg="#f0f0f0").grid(row=0, column=0, sticky="e", padx=5, pady=5)
+        self.entry_xmin = tk.Entry(self.frame_controles_x, width=10)
+        self.entry_xmin.grid(row=0, column=1, sticky="w", padx=5, pady=5)
+
+        tk.Label(self.frame_controles_x, text="X Final:", bg="#f0f0f0").grid(row=1, column=0, sticky="e", padx=5, pady=5)
+        self.entry_xmax = tk.Entry(self.frame_controles_x, width=10)
+        self.entry_xmax.grid(row=1, column=1, sticky="w", padx=5, pady=5)
+
+        tk.Label(self.frame_controles_x, text="Amplitude:", bg="#f0f0f0").grid(row=2, column=0, sticky="e", padx=5, pady=5)
+        self.entry_xstep = tk.Entry(self.frame_controles_x, width=10)
+        self.entry_xstep.grid(row=2, column=1, sticky="w", padx=5, pady=5)
+        
+        tk.Label(self.frame_controles_x, text="Deixe em branco para o modo automático.", bg="#f0f0f0", fg="gray", font=("Arial", 8, "italic")).grid(row=3, column=0, columnspan=2, pady=(0,5))
+
 
         # CONTROLES DA LEGENDA
         self.frame_legenda = tk.LabelFrame(self.scrollable_frame, text="Configurações da Legenda", bg="#f0f0f0", font=("Arial", 9, "bold"))
@@ -155,7 +172,7 @@ class AplicativoGraficos(tk.Tk):
         )
         self.btn_salvar.pack(fill=tk.X, pady=(5, 5))
         
-        # --- NOVO: BOTÃO DE COPIAR ---
+        # BOTÃO DE COPIAR (ÁREA DE TRANSFERÊNCIA)
         self.btn_copiar = tk.Button(
             self.scrollable_frame, 
             text="📋 Copiar Gráfico", 
@@ -270,7 +287,7 @@ class AplicativoGraficos(tk.Tk):
             except Exception as e:
                 messagebox.showerror("Erro", f"Ocorreu um erro ao salvar a imagem:\n{e}")
 
-# --- NOVO: LÓGICA DE CÓPIA PARA ÁREA DE TRANSFERÊNCIA (CRAVADO EM 11x7 CM) ---
+    # --- LÓGICA DE CÓPIA PARA ÁREA DE TRANSFERÊNCIA (11x7 CM E 64-BITS) ---
     def copiar_grafico(self):
         if not self.canvas_grafico:
             messagebox.showwarning("Aviso", "Não há nenhum gráfico na tela para copiar.")
@@ -360,7 +377,7 @@ class AplicativoGraficos(tk.Tk):
             user32.SetClipboardData(CF_DIB, hCd)
             user32.CloseClipboard()
 
-            # Feedback visual sutil (agora avisa o tamanho exato)
+            # Feedback visual sutil
             texto_original = self.btn_copiar.cget("text")
             self.btn_copiar.config(text="✔️ Copiado (11x7 cm)!")
             self.after(1500, lambda: self.btn_copiar.config(text=texto_original))
@@ -370,6 +387,7 @@ class AplicativoGraficos(tk.Tk):
         except Exception as e:
             messagebox.showerror("Erro", f"Ocorreu um erro interno ao copiar o gráfico:\n{e}")
 
+    # --- GERADOR DO GRÁFICO ---
     def gerar_e_mostrar_grafico(self, caminho_csv, novo_arquivo=False):
         if self.label_aviso.winfo_ismapped():
             self.label_aviso.pack_forget()
@@ -442,33 +460,35 @@ class AplicativoGraficos(tk.Tk):
             nome_digitado = ent.get().strip()
             nomes_para_plotar.append(nome_digitado if nome_digitado else "Série Desconhecida")
 
-
         fig, ax = plt.subplots(figsize=(8, 5), constrained_layout=True)
         cores_linhas = plt.cm.tab10.colors
 
+        # Linhas grossas
         for i, col in enumerate(colunas_temperatura):
             nome_serie = nomes_para_plotar[i] if i < len(nomes_para_plotar) else f"Série {i+1}"
             cor = cores_linhas[i % len(cores_linhas)] 
-            ax.plot(df[coluna_tempo], df[col], linewidth=2, label=nome_serie, color=cor)
+            ax.plot(df[coluna_tempo], df[col], linewidth=3.0, label=nome_serie, color=cor)
 
         limite_y = 65
-        ax.axhline(y=limite_y, color='red', linestyle='--', linewidth=1.5)
+        ax.axhline(y=limite_y, color='red', linestyle='--', linewidth=2.5)
 
         xmax = df[coluna_tempo].max()
-        ax.text(xmax, limite_y, 'Limite', color='red', fontsize=10, fontweight='bold', 
+        ax.text(xmax, limite_y, 'Limite', color='red', fontsize=22, fontweight='bold', 
                 ha='right', va='bottom')
 
         titulo_customizado = self.entry_titulo.get().strip()
         if titulo_customizado:
-            ax.set_title(titulo_customizado, fontsize=12, fontweight='bold')
+            ax.set_title(titulo_customizado, fontsize=24, fontweight='bold')
         else:
             nome_arquivo = os.path.splitext(os.path.basename(caminho_csv))[0]
-            ax.set_title(nome_arquivo, fontsize=12, fontweight='bold')
+            ax.set_title(nome_arquivo, fontsize=24, fontweight='bold')
             
-        ax.set_xlabel('Tempo (horas)', fontsize=10)
-        ax.set_ylabel('Temperatura (°C)', fontsize=10)
+        ax.set_xlabel('Tempo (horas)', fontsize=22)
+        ax.set_ylabel('Temperatura (°C)', fontsize=22)
+        ax.tick_params(axis='both', which='major', labelsize=20)
         ax.grid(True, linestyle=':', alpha=0.7)
         
+        # --- LÓGICA DO EIXO Y ---
         temp_max_global = df[colunas_temperatura].max().max()
         ymin_padrao = 0
         ymax_padrao = max(temp_max_global + 10, 75)
@@ -491,14 +511,36 @@ class AplicativoGraficos(tk.Tk):
         except ValueError:
             ax.set_ylim(bottom=ymin_padrao, top=ymax_padrao)
 
-        ax.set_xlim(left=0)
+        # --- LÓGICA DO NOVO EIXO X ---
+        ax.set_xlim(left=0) # Padrão
+        try:
+            str_xmin = self.entry_xmin.get().replace(',', '.')
+            str_xmax = self.entry_xmax.get().replace(',', '.')
+            str_xstep = self.entry_xstep.get().replace(',', '.')
 
+            if str_xmin.strip() or str_xmax.strip():
+                xmin_val = float(str_xmin) if str_xmin.strip() else 0.0
+                if str_xmax.strip():
+                    ax.set_xlim(left=xmin_val, right=float(str_xmax))
+                else:
+                    ax.set_xlim(left=xmin_val)
+
+            if str_xstep.strip():
+                xstep_val = float(str_xstep)
+                if xstep_val > 0:
+                    c_xmin, c_xmax = ax.get_xlim()
+                    ticks_x = np.arange(c_xmin, c_xmax + xstep_val, xstep_val)
+                    ax.set_xticks(ticks_x)
+        except ValueError:
+            pass # Ignora e deixa o automático se o usuário digitar letras
+
+        # Legenda com fonte aumentada
         if self.var_mostrar_legenda.get():
             ax.legend(
                 loc='upper center', 
                 bbox_to_anchor=(0.5, -0.15), 
                 ncol=4, 
-                fontsize=9,
+                fontsize=20,
                 frameon=False 
             )
 
