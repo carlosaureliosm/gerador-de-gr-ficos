@@ -26,8 +26,8 @@ class AplicativoGraficos(tk.Tk):
 
         # --- CONSTRUÇÃO DA INTERFACE ---
         
-        # Frame Esquerdo Principal
-        self.frame_esquerdo = tk.Frame(self, width=330, bg="#f0f0f0")
+        # Frame Esquerdo Principal (LARGURA AUMENTADA PARA 370 PARA CABER LADO A LADO)
+        self.frame_esquerdo = tk.Frame(self, width=370, bg="#f0f0f0")
         self.frame_esquerdo.pack(side=tk.LEFT, fill=tk.Y, padx=10, pady=10)
         self.frame_esquerdo.pack_propagate(False) 
 
@@ -100,41 +100,45 @@ class AplicativoGraficos(tk.Tk):
         self.entry_titulo.pack(fill=tk.X, padx=5, pady=5)
         tk.Label(self.frame_titulo, text="Deixe em branco para o padrão automático.", bg="#f0f0f0", fg="gray", font=("Arial", 8, "italic")).pack(pady=(0,2))
 
-        # CONTROLES DO EIXO Y
-        self.frame_controles = tk.LabelFrame(self.scrollable_frame, text="Controles do Eixo Y (Ordenadas)", bg="#f0f0f0", font=("Arial", 9, "bold"))
-        self.frame_controles.pack(fill=tk.X, pady=5, ipadx=5, ipady=5)
 
-        tk.Label(self.frame_controles, text="Y Inicial:", bg="#f0f0f0").grid(row=0, column=0, sticky="e", padx=5, pady=5)
-        self.entry_ymin = tk.Entry(self.frame_controles, width=10)
-        self.entry_ymin.grid(row=0, column=1, sticky="w", padx=5, pady=5)
+        # --- NOVO: CONTAINER PARA EIXOS LADO A LADO ---
+        self.container_eixos = tk.Frame(self.scrollable_frame, bg="#f0f0f0")
+        self.container_eixos.pack(fill=tk.X, pady=5)
 
-        tk.Label(self.frame_controles, text="Y Final:", bg="#f0f0f0").grid(row=1, column=0, sticky="e", padx=5, pady=5)
-        self.entry_ymax = tk.Entry(self.frame_controles, width=10)
-        self.entry_ymax.grid(row=1, column=1, sticky="w", padx=5, pady=5)
+        # CONTROLES DO EIXO Y (Esquerda)
+        self.frame_controles = tk.LabelFrame(self.container_eixos, text="Eixo Y (Ordenadas)", bg="#f0f0f0", font=("Arial", 9, "bold"))
+        self.frame_controles.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 2), ipadx=2, ipady=2)
 
-        tk.Label(self.frame_controles, text="Amplitude:", bg="#f0f0f0").grid(row=2, column=0, sticky="e", padx=5, pady=5)
-        self.entry_ystep = tk.Entry(self.frame_controles, width=10)
-        self.entry_ystep.grid(row=2, column=1, sticky="w", padx=5, pady=5)
-        
-        tk.Label(self.frame_controles, text="Deixe em branco para o modo automático.", bg="#f0f0f0", fg="gray", font=("Arial", 8, "italic")).grid(row=3, column=0, columnspan=2, pady=(0,5))
+        tk.Label(self.frame_controles, text="Inicial:", bg="#f0f0f0").grid(row=0, column=0, sticky="e", padx=2, pady=5)
+        self.entry_ymin = tk.Entry(self.frame_controles, width=8)
+        self.entry_ymin.grid(row=0, column=1, sticky="w", padx=2, pady=5)
 
-        # --- NOVO: CONTROLES DO EIXO X ---
-        self.frame_controles_x = tk.LabelFrame(self.scrollable_frame, text="Controles do Eixo X (Abscissas)", bg="#f0f0f0", font=("Arial", 9, "bold"))
-        self.frame_controles_x.pack(fill=tk.X, pady=5, ipadx=5, ipady=5)
+        tk.Label(self.frame_controles, text="Final:", bg="#f0f0f0").grid(row=1, column=0, sticky="e", padx=2, pady=5)
+        self.entry_ymax = tk.Entry(self.frame_controles, width=8)
+        self.entry_ymax.grid(row=1, column=1, sticky="w", padx=2, pady=5)
 
-        tk.Label(self.frame_controles_x, text="X Inicial:", bg="#f0f0f0").grid(row=0, column=0, sticky="e", padx=5, pady=5)
-        self.entry_xmin = tk.Entry(self.frame_controles_x, width=10)
-        self.entry_xmin.grid(row=0, column=1, sticky="w", padx=5, pady=5)
+        tk.Label(self.frame_controles, text="Amplitude:", bg="#f0f0f0").grid(row=2, column=0, sticky="e", padx=2, pady=5)
+        self.entry_ystep = tk.Entry(self.frame_controles, width=8)
+        self.entry_ystep.grid(row=2, column=1, sticky="w", padx=2, pady=5)
 
-        tk.Label(self.frame_controles_x, text="X Final:", bg="#f0f0f0").grid(row=1, column=0, sticky="e", padx=5, pady=5)
-        self.entry_xmax = tk.Entry(self.frame_controles_x, width=10)
-        self.entry_xmax.grid(row=1, column=1, sticky="w", padx=5, pady=5)
+        # CONTROLES DO EIXO X (Direita)
+        self.frame_controles_x = tk.LabelFrame(self.container_eixos, text="Eixo X (Abscissas)", bg="#f0f0f0", font=("Arial", 9, "bold"))
+        self.frame_controles_x.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(2, 0), ipadx=2, ipady=2)
 
-        tk.Label(self.frame_controles_x, text="Amplitude:", bg="#f0f0f0").grid(row=2, column=0, sticky="e", padx=5, pady=5)
-        self.entry_xstep = tk.Entry(self.frame_controles_x, width=10)
-        self.entry_xstep.grid(row=2, column=1, sticky="w", padx=5, pady=5)
-        
-        tk.Label(self.frame_controles_x, text="Deixe em branco para o modo automático.", bg="#f0f0f0", fg="gray", font=("Arial", 8, "italic")).grid(row=3, column=0, columnspan=2, pady=(0,5))
+        tk.Label(self.frame_controles_x, text="Inicial:", bg="#f0f0f0").grid(row=0, column=0, sticky="e", padx=2, pady=5)
+        self.entry_xmin = tk.Entry(self.frame_controles_x, width=8)
+        self.entry_xmin.grid(row=0, column=1, sticky="w", padx=2, pady=5)
+
+        tk.Label(self.frame_controles_x, text="Final:", bg="#f0f0f0").grid(row=1, column=0, sticky="e", padx=2, pady=5)
+        self.entry_xmax = tk.Entry(self.frame_controles_x, width=8)
+        self.entry_xmax.grid(row=1, column=1, sticky="w", padx=2, pady=5)
+
+        tk.Label(self.frame_controles_x, text="Amplitude:", bg="#f0f0f0").grid(row=2, column=0, sticky="e", padx=2, pady=5)
+        self.entry_xstep = tk.Entry(self.frame_controles_x, width=8)
+        self.entry_xstep.grid(row=2, column=1, sticky="w", padx=2, pady=5)
+
+        # Aviso unificado para os dois eixos
+        tk.Label(self.scrollable_frame, text="Deixe em branco para o modo automático nos eixos.", bg="#f0f0f0", fg="gray", font=("Arial", 8, "italic")).pack(pady=(0,5))
 
 
         # CONTROLES DA LEGENDA
@@ -287,7 +291,7 @@ class AplicativoGraficos(tk.Tk):
             except Exception as e:
                 messagebox.showerror("Erro", f"Ocorreu um erro ao salvar a imagem:\n{e}")
 
-    # --- LÓGICA DE CÓPIA PARA ÁREA DE TRANSFERÊNCIA (11x7 CM E 64-BITS) ---
+    # --- LÓGICA DE CÓPIA PARA ÁREA DE TRANSFERÊNCIA ---
     def copiar_grafico(self):
         if not self.canvas_grafico:
             messagebox.showwarning("Aviso", "Não há nenhum gráfico na tela para copiar.")
@@ -300,23 +304,18 @@ class AplicativoGraficos(tk.Tk):
             from ctypes import wintypes
             import struct
 
-            # 1. Salva o gráfico em um buffer de memória
             buf = io.BytesIO()
             self.canvas_grafico.figure.savefig(buf, format='png', dpi=300, bbox_inches='tight', transparent=False, facecolor='white')
             buf.seek(0)
             
             img = Image.open(buf)
             
-            # --- A MÁGICA DOS 11x7 CM CRAVADOS ---
-            # Definimos uma resolução padrão de 300 DPI (alta qualidade de impressão)
             dpi = 300
             pixels_por_cm = dpi / 2.54
             
-            # Calculamos a quantidade exata de pixels necessários para formar um retângulo de 11x7 cm
             largura_px = int(11.0 * pixels_por_cm)
             altura_px = int(7.0 * pixels_por_cm)
             
-            # Forçamos o redimensionamento da imagem (usando filtro LANCZOS para não perder qualidade nas letras)
             filtro = getattr(Image, 'Resampling', Image).LANCZOS
             img = img.resize((largura_px, altura_px), filtro)
             
@@ -324,20 +323,16 @@ class AplicativoGraficos(tk.Tk):
             img.convert("RGB").save(output, "BMP")
             bmp_data = bytearray(output.getvalue())
             
-            # Convertendo DPI para PPM (Pixels Por Metro) que o Windows exige no cabeçalho
             ppm = int(dpi / 0.0254) 
             
-            # Injetamos a resolução X e Y simultaneamente na memória do arquivo
             struct.pack_into('<i', bmp_data, 38, ppm)
             struct.pack_into('<i', bmp_data, 42, ppm)
             
-            # Corta o cabeçalho BMP (14 bytes)
             data = bytes(bmp_data[14:])
             
             output.close()
             buf.close()
 
-            # 3. Comandos do Windows (Blindados para arquitetura 64-bits)
             CF_DIB = 8
             GMEM_MOVEABLE = 0x0002
 
@@ -377,7 +372,6 @@ class AplicativoGraficos(tk.Tk):
             user32.SetClipboardData(CF_DIB, hCd)
             user32.CloseClipboard()
 
-            # Feedback visual sutil
             texto_original = self.btn_copiar.cget("text")
             self.btn_copiar.config(text="✔️ Copiado (11x7 cm)!")
             self.after(1500, lambda: self.btn_copiar.config(text=texto_original))
@@ -463,7 +457,6 @@ class AplicativoGraficos(tk.Tk):
         fig, ax = plt.subplots(figsize=(8, 5), constrained_layout=True)
         cores_linhas = plt.cm.tab10.colors
 
-        # Linhas grossas
         for i, col in enumerate(colunas_temperatura):
             nome_serie = nomes_para_plotar[i] if i < len(nomes_para_plotar) else f"Série {i+1}"
             cor = cores_linhas[i % len(cores_linhas)] 
@@ -488,7 +481,7 @@ class AplicativoGraficos(tk.Tk):
         ax.tick_params(axis='both', which='major', labelsize=20)
         ax.grid(True, linestyle=':', alpha=0.7)
         
-        # --- LÓGICA DO EIXO Y ---
+        # Lógica do Eixo Y
         temp_max_global = df[colunas_temperatura].max().max()
         ymin_padrao = 0
         ymax_padrao = max(temp_max_global + 10, 75)
@@ -511,8 +504,8 @@ class AplicativoGraficos(tk.Tk):
         except ValueError:
             ax.set_ylim(bottom=ymin_padrao, top=ymax_padrao)
 
-        # --- LÓGICA DO NOVO EIXO X ---
-        ax.set_xlim(left=0) # Padrão
+        # Lógica do Eixo X
+        ax.set_xlim(left=0) 
         try:
             str_xmin = self.entry_xmin.get().replace(',', '.')
             str_xmax = self.entry_xmax.get().replace(',', '.')
@@ -532,9 +525,8 @@ class AplicativoGraficos(tk.Tk):
                     ticks_x = np.arange(c_xmin, c_xmax + xstep_val, xstep_val)
                     ax.set_xticks(ticks_x)
         except ValueError:
-            pass # Ignora e deixa o automático se o usuário digitar letras
+            pass 
 
-        # Legenda com fonte aumentada
         if self.var_mostrar_legenda.get():
             ax.legend(
                 loc='upper center', 
